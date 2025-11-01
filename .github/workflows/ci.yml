@@ -23,13 +23,35 @@ jobs:
             echo "Corepack configured npm@10"
           else
             corepack enable
+            corepack prepare npm@10 --activate
           fi
           npm --version
+
+      - name: Record tool diagnostics
+        run: |
+          {
+            echo "node $(node -v)"
+            echo "npm $(npm -v)"
+            echo "registry $(npm config get registry)"
+          } | tee ci-diagnostics.txt
 
       - name: Install dependencies
         id: npm-ci
         continue-on-error: true
-        run: npm ci
+        run: |
+          set -o pipefail
+          npm ci --verbose --no-audit --no-fund 2>&1 | tee npm-ci.log
+
+      - name: Show npm debug logs
+        if: steps.npm-ci.outcome != 'success'
+        run: |
+          for file in "$HOME"/.npm/_logs/*-debug-*.log; do
+            if [ -f "$file" ]; then
+              echo "::group::$file"
+              cat "$file"
+              echo "::endgroup::"
+            fi
+          done
 
       - name: Check npm registry availability
         id: npm-ping
@@ -43,6 +65,22 @@ jobs:
       - name: Registry unavailable notice
         if: steps.npm-ping.outputs.registry-ok != 'true'
         run: echo "sandbox registry unreachable, external 403"
+
+      - name: Collect npm logs
+        if: always()
+        run: |
+          mkdir -p ci-artifacts
+          [ -f ci-diagnostics.txt ] && cp ci-diagnostics.txt ci-artifacts/
+          [ -f npm-ci.log ] && cp npm-ci.log ci-artifacts/
+          find "$HOME"/.npm/_logs -maxdepth 1 -name '*-debug-*.log' -exec cp {} ci-artifacts/ \; 2>/dev/null || true
+
+      - name: Upload diagnostics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-ci-diagnostics
+          path: ci-artifacts
+          if-no-files-found: ignore
 
       - name: Verify install result
         if: steps.npm-ping.outputs.registry-ok == 'true'
