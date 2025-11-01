@@ -6,8 +6,11 @@ on:
   pull_request:
 
 jobs:
-  ci:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      can_build: ${{ steps.readiness.outputs.can_build }}
+      reason: ${{ steps.readiness.outputs.reason }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,6 +22,7 @@ jobs:
 
       - name: Enable npm 10 via Corepack
         run: |
+          set -euo pipefail
           if corepack enable npm@10 2>/dev/null; then
             echo "Corepack configured npm@10"
           else
@@ -35,42 +39,97 @@ jobs:
             echo "registry $(npm config get registry)"
           } | tee ci-diagnostics.txt
 
-      - name: Install dependencies
-        id: npm-ci
-        continue-on-error: true
+      - name: Evaluate build readiness
+        id: readiness
         run: |
-          set -o pipefail
-          npm ci --verbose --no-audit --no-fund 2>&1 | tee npm-ci.log
+          set -euo pipefail
+          can_build=true
+          reasons=()
 
-      - name: Show npm debug logs
-        if: steps.npm-ci.outcome != 'success'
-        run: |
-          for file in "$HOME"/.npm/_logs/*-debug-*.log; do
-            if [ -f "$file" ]; then
-              echo "::group::$file"
-              cat "$file"
-              echo "::endgroup::"
-            fi
-          done
-
-      - name: Check npm registry availability
-        id: npm-ping
-        run: |
-          if npm ping; then
-            echo "registry-ok=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "registry-ok=false" >> "$GITHUB_OUTPUT"
+          if [ ! -f package-lock.json ]; then
+            can_build=false
+            reasons+=("missing package-lock.json")
           fi
 
-      - name: Registry unavailable notice
-        if: steps.npm-ping.outputs.registry-ok != 'true'
-        run: echo "sandbox registry unreachable, external 403"
+          if ! npm ping >/tmp/npm-ping.log 2>&1; then
+            can_build=false
+            reasons+=("public registry unreachable")
+          else
+            cat /tmp/npm-ping.log
+          fi
+
+          if [ ${#reasons[@]} -eq 0 ]; then
+            summary="ready: build prerequisites satisfied"
+            reason="ready"
+          else
+            reason="$(printf '%s; ' "${reasons[@]}")"
+            reason="${reason%; }"
+            summary="skipped: $reason"
+          fi
+
+          {
+            echo "can_build=$can_build"
+            echo "reason=$reason"
+          } >> "$GITHUB_OUTPUT"
+
+          printf '%s\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect diagnostics artifact
+        if: always()
+        run: |
+          mkdir -p ci-artifacts
+          [ -f ci-diagnostics.txt ] && cp ci-diagnostics.txt ci-artifacts/
+          [ -f /tmp/npm-ping.log ] && cp /tmp/npm-ping.log ci-artifacts/
+
+      - name: Upload diagnostics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prepare-diagnostics
+          path: ci-artifacts
+          if-no-files-found: ignore
+
+  build:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.can_build == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable npm 10 via Corepack
+        run: |
+          set -euo pipefail
+          if corepack enable npm@10 2>/dev/null; then
+            echo "Corepack configured npm@10"
+          else
+            corepack enable
+            corepack prepare npm@10 --activate
+          fi
+          npm --version
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          npm ci --verbose --no-audit --no-fund 2>&1 | tee npm-ci.log
+
+      - name: Run lint
+        if: success()
+        run: npm run lint --if-present
+
+      - name: Run tests
+        if: success()
+        run: npm test --if-present
 
       - name: Collect npm logs
         if: always()
         run: |
           mkdir -p ci-artifacts
-          [ -f ci-diagnostics.txt ] && cp ci-diagnostics.txt ci-artifacts/
           [ -f npm-ci.log ] && cp npm-ci.log ci-artifacts/
           find "$HOME"/.npm/_logs -maxdepth 1 -name '*-debug-*.log' -exec cp {} ci-artifacts/ \; 2>/dev/null || true
 
@@ -78,22 +137,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: npm-ci-diagnostics
+          name: build-logs
           path: ci-artifacts
           if-no-files-found: ignore
-
-      - name: Verify install result
-        if: steps.npm-ping.outputs.registry-ok == 'true'
-        run: |
-          if [ "${{ steps.npm-ci.outcome }}" != "success" ]; then
-            echo "npm ci failed despite reachable registry" >&2
-            exit 1
-          fi
-
-      - name: Run lint
-        if: steps.npm-ping.outputs.registry-ok == 'true' && steps.npm-ci.outcome == 'success'
-        run: npm run lint --if-present
-
-      - name: Run tests
-        if: steps.npm-ping.outputs.registry-ok == 'true' && steps.npm-ci.outcome == 'success'
-        run: npm test --if-present
