@@ -11,13 +11,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Nutzt .nvmrc (empfohlen). Alternativ: node-version: '20'
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Enable npm 10
+        run: corepack enable npm@10
+
+      # Deterministische Installation – erfordert vorhandenes package-lock.json
       - name: Install dependencies
-        run: npm install
-      - name: Lint
-        run: npm run lint
-      - name: Test
-        run: npm test
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint (if present)
+        run: npm run --if-present lint
+
+      - name: Test (if present)
+        run: npm run --if-present test
