@@ -70,4 +70,3 @@ npm test
 | Erweiterungen      | siehe `ROADMAP.md`         |
 
 Weitere Ideen und offene Punkte sind in `ROADMAP.md` skizziert.
-
