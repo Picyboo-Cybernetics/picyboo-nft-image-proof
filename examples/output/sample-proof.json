@@ -1,0 +1,23 @@
+{
+  "schema": "PBO-NFT-PROOF/1.0",
+  "source": "picyboo-nft-image-proof",
+  "file": "sample.png",
+  "hash_sha256": "5bc07fdf873df8a87a1c1d505c05ae8dfea5dd6951202444f6624c18538e4ac2",
+  "pHash_ahash": "b8e0f0d8fe7a2038",
+  "dimensions": {
+    "width": 320,
+    "height": 230
+  },
+  "exif": {
+    "ImageWidth": 320,
+    "ImageHeight": 230,
+    "BitDepth": 8,
+    "ColorType": "RGB with Alpha",
+    "Compression": "Deflate/Inflate",
+    "Filter": "Adaptive",
+    "Interlace": "Noninterlaced",
+    "ProfileName": "sRGB IEC61966-2.1"
+  },
+  "ctx_token": "8abcc0066cb29938983e2b1e057e55451de65941022970d44f9f54275c614e33",
+  "created_at": "2025-11-01T08:18:36.881Z"
+}
