@@ -7,7 +7,7 @@ import Jimp from 'jimp';
  * @param {string} path - Path to the file on disk.
  * @returns {Promise<string>} Hex encoded SHA-256 digest.
  */
-export async function sha256File(path) {
+export async function sha256File (path) {
   const buffer = await readFile(path);
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }
@@ -18,7 +18,7 @@ export async function sha256File(path) {
  * @param {number} [size=8] - Width and height used for downsampling.
  * @returns {Promise<string>} Hex encoded perceptual hash.
  */
-export async function averageHash(path, size = 8) {
+export async function averageHash (path, size = 8) {
   const image = await Jimp.read(path);
   image.resize(size, size).greyscale();
 

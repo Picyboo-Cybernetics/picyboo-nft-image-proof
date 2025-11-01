@@ -2,7 +2,7 @@
 import { program } from 'commander';
 import { buildImageProof } from '../src/index.js';
 
-async function handleProofCommand(imagePath) {
+async function handleProofCommand (imagePath) {
   const proof = await buildImageProof(imagePath);
   process.stdout.write(`${JSON.stringify(proof, null, 2)}\n`);
 }

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { averageHash, sha256File } from './hashing.js';
 import { extractImageMetadata } from './metadata.js';
 
-async function deriveCtxToken(hexHash) {
+async function deriveCtxToken (hexHash) {
   const seed = Buffer.from(hexHash, 'hex');
   const baseKey = await crypto.webcrypto.subtle.importKey(
     'raw',
@@ -32,7 +32,7 @@ async function deriveCtxToken(hexHash) {
  * @param {string} imagePath - Path to an image file.
  * @returns {Promise<object>} Proof description including hashes and metadata.
  */
-export async function buildImageProof(imagePath) {
+export async function buildImageProof (imagePath) {
   const [hash, perceptualHash, metadata] = await Promise.all([
     sha256File(imagePath),
     averageHash(imagePath),
