@@ -1,15 +1,14 @@
+// .eslintrc.cjs
 module.exports = {
+  extends: ['standard'],
   env: {
-    es2021: true,
+    es2023: true,
     node: true,
     jest: true,
   },
-  extends: ['standard'],
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-  },
   rules: {
-    'no-console': 'off'
+    semi: ['error', 'always'],
+    'comma-dangle': 'off',
+    'space-before-function-paren': ['error', 'never'],
   },
 };
