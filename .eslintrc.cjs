@@ -9,6 +9,6 @@ module.exports = {
   rules: {
     semi: ['error', 'always'],
     'comma-dangle': 'off',
-    'space-before-function-paren': ['error', 'never'],
+    'space-before-function-paren': ['error', 'always'],
   },
 };
